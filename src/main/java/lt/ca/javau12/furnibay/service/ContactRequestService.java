@@ -62,4 +62,12 @@ public class ContactRequestService {
     public ContactRequest create(ContactRequest request) {
         return contactRequestRepository.save(request);
     }
+    public boolean deleteById(Long id) {
+        if (contactRequestRepository.existsById(id)) {
+            contactRequestRepository.deleteById(id);
+            return true;
+        }
+        return false;
+    }
+
 }

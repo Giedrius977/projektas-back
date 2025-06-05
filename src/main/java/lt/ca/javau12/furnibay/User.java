@@ -2,6 +2,7 @@ package lt.ca.javau12.furnibay;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import jakarta.persistence.CascadeType;
@@ -36,7 +37,8 @@ public class User {
 	@JsonManagedReference
 	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private List<Project> projects;
-	
+
+	public User() { }
 	
     public String getPhone() {
 		return phone;

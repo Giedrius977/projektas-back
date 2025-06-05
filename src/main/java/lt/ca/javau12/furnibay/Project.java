@@ -2,8 +2,10 @@ package lt.ca.javau12.furnibay;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import jakarta.persistence.CascadeType;
@@ -25,10 +27,13 @@ public class Project {
     private String name;
 
     @ManyToOne
+    @JsonBackReference
     private User user;
     
     @NotBlank
 	private String description;
+    
+    private String clientUsername;
     
     private String status;
 
@@ -44,7 +49,8 @@ public class Project {
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
-    private List<Step> steps;
+    private List<Step> steps = new ArrayList<>();
+
     
     
     public String getClientName() {
@@ -138,6 +144,14 @@ public class Project {
 
 	public void setSteps(List<Step> steps) {
 	    this.steps = steps;
+	}
+
+	public String getClientUsername() {
+		return clientUsername;
+	}
+
+	public void setClientUsername(String clientUsername) {
+		this.clientUsername = clientUsername;
 	}
 
 }

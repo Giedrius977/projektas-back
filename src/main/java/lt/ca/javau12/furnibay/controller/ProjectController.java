@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import lt.ca.javau12.furnibay.Project;
 import lt.ca.javau12.furnibay.service.ProjectService;
 
+@CrossOrigin(origins = "http://localhost:3001")
 @RestController
 @RequestMapping("/api/projects")
 public class ProjectController {
@@ -19,9 +20,14 @@ public class ProjectController {
 
     // Gauti visus projektus
     @GetMapping
-    public List<Project> getAll() {
-        return projectService.getAllProjects();
+    public List<Project> getAll(@RequestParam(required = false) String client) {
+        if (client != null) {
+            return projectService.getProjectsByClient(client);
+        } else {
+            return projectService.getAllProjects();
+        }
     }
+
 
  // ProjectController.java
 

@@ -29,6 +29,10 @@ public class Step {
         this.done = done;
         this.project = project;
     }
+    
+    public Step () {
+    	
+    }
 
 
     // Getteriai ir setteriai

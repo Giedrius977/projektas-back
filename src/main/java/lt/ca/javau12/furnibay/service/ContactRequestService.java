@@ -70,4 +70,13 @@ public class ContactRequestService {
         return false;
     }
 
+    public ContactRequest getById(Long id) {
+        return contactRequestRepository.findById(id).orElse(null);
+    }
+
+    public ContactRequest save(ContactRequest request) {
+        return contactRequestRepository.save(request);
+    }
+
+    
 }

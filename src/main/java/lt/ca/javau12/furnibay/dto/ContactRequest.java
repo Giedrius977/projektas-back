@@ -19,14 +19,16 @@ public class ContactRequest {
     private String email;
     private String message;
     private boolean convertedToProject;
+    private String status;
 
-    
     @Lob
     @Column(columnDefinition = "LONGTEXT")
     private String file;
 
-    
     private String createdAt;
+    
+    
+    
 	public Long getId() {
 		return id;
 	}
@@ -39,41 +41,59 @@ public class ContactRequest {
 	public void setName(String name) {
 		this.name = name;
 	}
+	
+	
 	public String getPhone() {
 		return phone;
 	}
 	public void setPhone(String phone) {
 		this.phone = phone;
 	}
+	
+	
 	public String getEmail() {
 		return email;
 	}
 	public void setEmail(String email) {
 		this.email = email;
 	}
+	
+	
 	public String getMessage() {
 		return message;
 	}
 	public void setMessage(String message) {
 		this.message = message;
 	}
+	
+	
 	public String getFile() {
 		return file;
 	}
 	public void setFile(String file) {
 		this.file = file;
 	}
+	
+	
 	public String getCreatedAt() {
 		return createdAt;
 	}
 	public void setCreatedAt(String createdAt) {
 		this.createdAt = createdAt;
 	}
+	
+	
 	public boolean isConvertedToProject() {
 		return convertedToProject;
 	}
 	public void setConvertedToProject(boolean convertedToProject) {
 		this.convertedToProject = convertedToProject;
+	}
+	public String getStatus() {
+		return status;
+	}
+	public void setStatus(String status) {
+		this.status = status;
 	}
 
 }

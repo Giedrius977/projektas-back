@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import lt.ca.javau12.furnibay.User;
 import lt.ca.javau12.furnibay.service.UserService;
 
+@CrossOrigin(origins = "http://localhost:3001")
 @RestController
 @RequestMapping("/api/users")
 public class UserController {

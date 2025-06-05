@@ -1,5 +1,4 @@
 package lt.ca.javau12.furnibay.service;
-import lt.ca.javau12.furnibay.Step;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -7,11 +6,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import jakarta.persistence.EntityNotFoundException;
 import lt.ca.javau12.furnibay.Project;
+import lt.ca.javau12.furnibay.Step;
 import lt.ca.javau12.furnibay.User;
 import lt.ca.javau12.furnibay.dto.ContactRequest;
 import lt.ca.javau12.furnibay.repository.ContactRequestRepository;
@@ -31,6 +33,10 @@ public class ProjectService {
     public List<Project> getAllProjects() {
         return projectRepository.findAll();
     }
+    public List<Project> getProjectsByClient(String clientUsername) {
+        return projectRepository.findByClientUsername(clientUsername);
+    }
+
 
     // Sukurti projektą su validacija
     public Project createProject(Project project) {
@@ -62,12 +68,19 @@ public class ProjectService {
     @Autowired
     private ContactRequestRepository contactRequestRepository;
 
+    @Transactional
     public Project convertContactToProject(Long contactId) {
         ContactRequest request = contactRequestRepository.findById(contactId)
             .orElseThrow(() -> new IllegalArgumentException("ContactRequest not found"));
 
+        // pažymim kaip konvertuotą ir išsaugom
+        request.setConvertedToProject(true);
+        contactRequestRepository.save(request);
+
+        // tada kuriam projektą
         return createProjectFromContactRequest(request);
     }
+
 
     
     // Gauti projektą pagal ID
@@ -84,31 +97,29 @@ public class ProjectService {
         return false;
     }
 
-    // ✅ Naujas metodas: sukuria projektą iš ContactRequest
-    public Project createProjectFromContactRequest(ContactRequest request) {
+
+ // ✅ Projektas iš ContactRequest
+    private Project createProjectFromContactRequest(ContactRequest request) {
         Project project = new Project();
-        request.setConvertedToProject(true);
-        contactRequestRepository.save(request);
 
-
-        // Susiejame arba sukuriame vartotoją
+        // susiejame su naudotoju arba sukuriame naują
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseGet(() -> createUserFromContact(request));
         project.setUser(user);
-
         project.setName(request.getName());
         project.setDescription(request.getMessage());
         project.setStatus("Vertinamas");
         project.setCreatedAt(parseCreatedAt(request.getCreatedAt()));
 
-        // Žingsniai
+        // žingsniai (etapai)
         List<Step> steps = new ArrayList<>();
-        steps.add(createStep("Užklausa gauta", true));
-        steps.add(createStep("Vertinimas", false));
-        steps.add(createStep("Projektavimas", false));
-        steps.add(createStep("Gamyba", false));
-        steps.add(createStep("Pristatymas", false));
-
+        steps.add(createStep("Užklausa gauta", true, project));
+        steps.add(createStep("Vertinimas", false, project));
+        steps.add(createStep("Projektavimas", false, project));
+        steps.add(createStep("Gamyba", false, project));
+        steps.add(createStep("Pristatymas", false, project));
+        
+        
         for (Step step : steps) {
             step.setProject(project);
         }
@@ -125,16 +136,24 @@ public class ProjectService {
         return userRepository.save(user);
     }
 
-    private Step createStep(String title, boolean done) {
-        return new Step(title, done, null); // null perduodamas kaip project, jį gali nustatyti vėliau
+    private Step createStep(String title, boolean done, Project project) {
+        Step step = new Step();
+        step.setTitle(title);
+        step.setDone(done);
+        step.setProject(project); 
+        return step;
     }
+
 
 
     private LocalDateTime parseCreatedAt(String createdAt) {
         try {
+            System.out.println("Parsing createdAt: " + createdAt);
             return LocalDateTime.parse(createdAt, DateTimeFormatter.ISO_DATE_TIME);
         } catch (Exception e) {
+            System.out.println("Nepavyko parse createdAt, naudojama dabartinė data. Klaida: " + e.getMessage());
             return LocalDateTime.now();
         }
     }
+
 }

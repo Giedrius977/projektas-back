@@ -10,7 +10,9 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ContactRequestRepository extends JpaRepository<ContactRequest, Long> {
+	
 	List<ContactRequest> findByConvertedToProjectFalse();
+	
     Optional<ContactRequest> findById(Long id);
     
 

@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import lt.ca.javau12.furnibay.Project;
 import lt.ca.javau12.furnibay.User;
 import lt.ca.javau12.furnibay.service.UserService;
 
@@ -52,4 +53,18 @@ public class UserController {
             })
             .orElse(ResponseEntity.notFound().build());
     }
+    
+    @GetMapping("/by-username/{username}")
+    public ResponseEntity<User> getByUsername(@PathVariable String username) {
+        return userService.getUserByUsername(username)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+    }
+    
+    @GetMapping("/{userId}/projects")
+    public ResponseEntity<List<Project>> getUserProjects(@PathVariable Long userId) {
+        List<Project> projects = userService.getUserProjects(userId);
+        return ResponseEntity.ok(projects);
+    }
 }
+    

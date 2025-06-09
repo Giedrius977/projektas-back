@@ -6,52 +6,118 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 
+
 @Entity
+@Table(name = "projects")
+@JsonInclude(JsonInclude.Include.NON_NULL)  // Nerodyti null reikšmių
 public class Project {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank
     private String name;
 
-    @ManyToOne
-    @JsonBackReference
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    @JsonBackReference("user-projects")
     private User user;
-    
+  
     @NotBlank
 	private String description;
-    
-    private String clientUsername;
-    
-    private String status;
-
-    private Double estimatedPrice;
-
-    private LocalDate estimatedDeadline;
 
     private String materials;
-
-    private String notes;
-
+    
+    private String status;
+    
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<Step> steps = new ArrayList<>();
 
+    @OneToOne
+    @JsonManagedReference
+    private ContactRequest contactRequest;
     
+    
+    private LocalDate deliveryDate; // Sutampa su ContactRequest
+    
+    private String orderPrice;      // Sutampa su ContactRequest
+	
+    private String notes; 
+    
+    
+    public LocalDate getDeliveryDate() {
+		return deliveryDate;
+	}
+
+	public void setDeliveryDate(LocalDate deliveryDate) {
+		this.deliveryDate = deliveryDate;
+	}
+
+	public String getOrderPrice() {
+		return orderPrice;
+	}
+
+	public void setOrderPrice(String orderPrice) {
+		this.orderPrice = orderPrice;
+	}
+
+    public ContactRequest getContactRequest() {
+		return contactRequest;
+	}
+
+    public void setStatus(String status) {
+        this.status = status;
+        if (this.contactRequest != null) {
+            this.contactRequest.setStatus(status); // Sinchronizuojame abi puses
+        }
+    }
+
+    public String getStatus() {
+        return contactRequest != null ? contactRequest.getStatus() : this.status;
+    }
+
+    public void setContactRequest(ContactRequest contactRequest) {
+        this.contactRequest = contactRequest;
+        if (contactRequest != null) {
+            this.status = contactRequest.getStatus();  // pradinis statuso sinchronizavimas
+        }
+    }
+
+    //public String getClientPhone() {
+    //    return clientPhone;
+    //}
+    
+    //public void setClientPhone(String clientPhone) {
+    //    this.clientPhone = clientPhone;
+    //}
+    
+    //public String getClientEmail() {
+    //    return clientEmail;
+    //}
+    
+    //public void setClientEmail(String clientEmail) {
+    //    this.clientEmail = clientEmail;
+    //}
     
     public String getClientName() {
         return user != null ? user.getName() : null;
@@ -81,37 +147,12 @@ public class Project {
 		this.user = user;
 	}
 
-
 	public String getDescription() {
 	    return description;
 	}
 
 	public void setDescription(String description) {
 	    this.description = description;
-	}
-
-	public String getStatus() {
-		return status;
-	}
-
-	public void setStatus(String status) {
-		this.status = status;
-	}
-
-	public Double getEstimatedPrice() {
-		return estimatedPrice;
-	}
-
-	public void setEstimatedPrice(Double estimatedPrice) {
-		this.estimatedPrice = estimatedPrice;
-	}
-
-	public LocalDate getEstimatedDeadline() {
-		return estimatedDeadline;
-	}
-
-	public void setEstimatedDeadline(LocalDate estimatedDeadline) {
-		this.estimatedDeadline = estimatedDeadline;
 	}
 
 	public String getMaterials() {
@@ -144,14 +185,6 @@ public class Project {
 
 	public void setSteps(List<Step> steps) {
 	    this.steps = steps;
-	}
-
-	public String getClientUsername() {
-		return clientUsername;
-	}
-
-	public void setClientUsername(String clientUsername) {
-		this.clientUsername = clientUsername;
 	}
 
 }

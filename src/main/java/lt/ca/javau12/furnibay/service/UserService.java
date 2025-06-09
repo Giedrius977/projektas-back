@@ -6,12 +6,14 @@ import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import lt.ca.javau12.furnibay.Project;
 import lt.ca.javau12.furnibay.User;
 import lt.ca.javau12.furnibay.repository.UserRepository;
 
-//UserService.java
 @Service
 public class UserService {
+	
+	
  @Autowired
  private UserRepository userRepository;
 
@@ -34,5 +36,14 @@ public class UserService {
 	    }
 	    return false;
 	}
-
+ public Optional<User> getUserByUsername(String username) {
+     return userRepository.findByName(username); // Or findByUsername if you prefer
+ }
+ 
+ public List<Project> getUserProjects(Long userId) {
+     return userRepository.findProjectsByUserId(userId);
+ }
 }
+
+ 
+ 

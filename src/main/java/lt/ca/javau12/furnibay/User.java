@@ -1,23 +1,24 @@
 package lt.ca.javau12.furnibay;
 
+import java.util.ArrayList;
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
-
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
 @Entity
+@Table(name = "users")
 public class User {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -27,18 +28,20 @@ public class User {
 
     @Email
     private String email;
-    
-    @Column
-	private String phone;
 
-	@Column
+    private String phone;
+
     private String description;
- 
-	@JsonManagedReference
-	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
-    private List<Project> projects;
 
-	public User() { }
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference("user-projects")
+    private List<Project> projects = new ArrayList<>();
+
+
+    public User() { }
+
+    // konstruktoriai, getteriai/setteriai
+
 	
     public String getPhone() {
 		return phone;

@@ -9,13 +9,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import jakarta.persistence.EntityNotFoundException;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Map;
 
 @CrossOrigin(origins = "http://localhost:3001")
 @RestController
@@ -28,75 +32,110 @@ public class ContactRequestController {
     @Autowired
     private ProjectService projectService;
 
-    // Sukurti naują ContactRequest
+    private final ObjectMapper objectMapper;
+    private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+    public ContactRequestController() {
+        this.objectMapper = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+            .registerModule(new JavaTimeModule());
+    }
+
     @PostMapping
     public ResponseEntity<ContactRequest> create(@RequestBody ContactRequest request) {
         ContactRequest savedRequest = contactRequestService.create(request);
         return ResponseEntity.ok(savedRequest);
     }
 
-    // Gauti visus ContactRequest
     @GetMapping
     public List<ContactRequest> getAll() {
         return contactRequestService.getAll();
     }
 
-    // Konvertuoti ContactRequest į Project
     @PostMapping("/convert/{contactId}")
     public ResponseEntity<?> convertContactToProject(@PathVariable Long contactId) {
         try {
+            ContactRequest request = contactRequestService.getById(contactId);
+            if (request == null) {
+                return ResponseEntity.notFound().build();
+            }
+
             Project project = projectService.convertContactToProject(contactId);
-            return ResponseEntity.ok(project);
+            if (project == null) {
+                throw new RuntimeException("Conversion returned null project");
+            }
+
+            // Update the original request
+            request.setConvertedToProject(true);
+            ContactRequest updatedRequest = contactRequestService.save(request);
+            
+            if (!updatedRequest.isConvertedToProject()) {
+                throw new RuntimeException("Failed to mark request as converted");
+            }
+
+            return ResponseEntity.ok(Map.of(
+                "project", project,
+                "contactRequest", updatedRequest
+            ));
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Nepavyko konvertuoti į projektą: " + e.getMessage());
+            System.err.println("Conversion error: " + e.getMessage());
+            return ResponseEntity.status(500)
+                .body("Conversion failed: " + e.getMessage());
         }
     }
 
-    // PATCH – dalinis ContactRequest atnaujinimas
     @PatchMapping("/{id}")
     public ResponseEntity<?> updateRequest(
         @PathVariable Long id,
-        @RequestBody String rawJson
-    ) {
+        @RequestBody Map<String, Object> updates) {
+        
         try {
-            // Validuojame JSON
-            new ObjectMapper().readTree(rawJson);
-
-            ContactRequest partialRequest = new ObjectMapper()
-                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-                .readValue(rawJson, ContactRequest.class);
-
             ContactRequest existing = contactRequestService.getById(id);
             if (existing == null) {
                 return ResponseEntity.notFound().build();
             }
 
-            // Atnaujiname reikšmes tik jei pateiktos
-            if (partialRequest.getStatus() != null) {
-                existing.setStatus(partialRequest.getStatus());
+            // Handle date update
+            if (updates.containsKey("deliveryDate")) {
+                Object dateObj = updates.get("deliveryDate");
+                try {
+                    if (dateObj instanceof String) {
+                        existing.setDeliveryDate(LocalDate.parse((String) dateObj, dateFormatter));
+                    } else if (dateObj != null) {
+                        existing.setDeliveryDate(objectMapper.convertValue(dateObj, LocalDate.class));
+                    }
+                } catch (DateTimeParseException e) {
+                    return ResponseEntity.badRequest()
+                        .body("Invalid date format. Expected yyyy-MM-dd");
+                }
             }
-            if (partialRequest.getDeliveryDate() != null) {
-                existing.setDeliveryDate(partialRequest.getDeliveryDate());
+
+            // Update other fields
+            if (updates.containsKey("status")) {
+                existing.setStatus((String) updates.get("status"));
             }
-            if (partialRequest.getOrderPrice() != null) {
-                existing.setOrderPrice(partialRequest.getOrderPrice());
+            if (updates.containsKey("orderPrice")) {
+                existing.setOrderPrice((String) updates.get("orderPrice"));
             }
-            if (partialRequest.getNotes() != null) {
-                existing.setNotes(partialRequest.getNotes());
+            if (updates.containsKey("notes")) {
+                existing.setNotes((String) updates.get("notes"));
             }
 
             ContactRequest savedRequest = contactRequestService.save(existing);
-
-            // Sinchronizuoti susijusį projektą
             projectService.syncProjectWithContactRequest(savedRequest);
 
+            // Log successful update
+            System.out.println("Successfully updated request ID " + id + 
+                " with deliveryDate: " + savedRequest.getDeliveryDate());
+
             return ResponseEntity.ok(savedRequest);
-        } catch (JsonProcessingException e) {
-            return ResponseEntity.badRequest().body("Netinkamas JSON formatas: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Update error for request ID " + id + ": " + e.getMessage());
+            return ResponseEntity.badRequest()
+                .body("Update failed: " + e.getMessage());
         }
     }
 
-    // Gauti Project iš ContactRequest
     @GetMapping("/{id}/project")
     public ResponseEntity<Project> getProjectFromContactRequest(@PathVariable Long id) {
         try {
@@ -105,5 +144,12 @@ public class ContactRequestController {
         } catch (EntityNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    private LocalDate convertToLocalDate(Object dateObj) throws DateTimeParseException {
+        if (dateObj instanceof String) {
+            return LocalDate.parse((String) dateObj, dateFormatter);
+        }
+        return objectMapper.convertValue(dateObj, LocalDate.class);
     }
 }

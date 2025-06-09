@@ -4,6 +4,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 import jakarta.persistence.*;
 
 @Entity
@@ -17,9 +19,16 @@ public class ContactRequest {
     private String phone;
     private String email;
     private String message;
+    
+    @Column(name = "converted_to_project")
     private boolean convertedToProject;
+    
     private String status;
+    
+    @Column(name = "delivery_date")
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate deliveryDate;
+    
     private String orderPrice;
     private String notes;
 
@@ -32,6 +41,8 @@ public class ContactRequest {
     @OneToOne(mappedBy = "contactRequest", cascade = CascadeType.ALL)
     @JsonBackReference
     private Project project;
+    
+
 
     // Getteriai ir setteriai
 

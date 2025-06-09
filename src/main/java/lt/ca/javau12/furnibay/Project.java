@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
@@ -47,6 +48,8 @@ public class Project {
     
     private String status;
     
+    //@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    @Column(name = "created_at", columnDefinition = "TIMESTAMP")
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -69,9 +72,9 @@ public class Project {
 		return deliveryDate;
 	}
 
-	public void setDeliveryDate(LocalDate deliveryDate) {
-		this.deliveryDate = deliveryDate;
-	}
+    public void setDeliveryDate(LocalDate deliveryDate) {
+        this.deliveryDate = deliveryDate;
+    }
 
 	public String getOrderPrice() {
 		return orderPrice;
@@ -103,22 +106,7 @@ public class Project {
         }
     }
 
-    //public String getClientPhone() {
-    //    return clientPhone;
-    //}
-    
-    //public void setClientPhone(String clientPhone) {
-    //    this.clientPhone = clientPhone;
-    //}
-    
-    //public String getClientEmail() {
-    //    return clientEmail;
-    //}
-    
-    //public void setClientEmail(String clientEmail) {
-    //    this.clientEmail = clientEmail;
-    //}
-    
+   
     public String getClientName() {
         return user != null ? user.getName() : null;
     }

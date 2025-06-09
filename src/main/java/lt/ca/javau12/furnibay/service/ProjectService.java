@@ -15,7 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import lt.ca.javau12.furnibay.Project;
-import lt.ca.javau12.furnibay.Step;
 import lt.ca.javau12.furnibay.User;
 import lt.ca.javau12.furnibay.ContactRequest;
 import lt.ca.javau12.furnibay.repository.ContactRequestRepository;
@@ -28,6 +27,12 @@ public class ProjectService {
     @Autowired
     private ProjectRepository projectRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private ContactRequestRepository contactRequestRepository;
+
     @Transactional
     public void syncProjectStatusWithRequestStatus(ContactRequest request) {
         if (request.getProject() == null) {
@@ -35,11 +40,7 @@ public class ProjectService {
         }
 
         Project project = request.getProject();
-
-        // Sinchronizuojame projekto statusą su užklausos statusu
         project.setStatus(request.getStatus());
-
-        // Papildomai sinchronizuojame kitą informaciją, jei reikia
         project.setDeliveryDate(request.getDeliveryDate());
         project.setOrderPrice(request.getOrderPrice());
         project.setNotes(request.getNotes());
@@ -49,7 +50,7 @@ public class ProjectService {
 
     public Project getProjectFromContactRequest(Long contactRequestId) {
         ContactRequest request = contactRequestRepository.findById(contactRequestId)
-            .orElseThrow(() -> new EntityNotFoundException("ContactRequest nerastas"));
+                .orElseThrow(() -> new EntityNotFoundException("ContactRequest nerastas"));
 
         if (request.getProject() == null) {
             throw new EntityNotFoundException("Šis ContactRequest neturi susieto projekto");
@@ -57,14 +58,7 @@ public class ProjectService {
 
         return request.getProject();
     }
-    
-    @Autowired
-    private UserRepository userRepository;
 
-    @Autowired
-    private ContactRequestRepository contactRequestRepository;
-
-    // Gauti visus projektus
     public List<Project> getAllProjects() {
         return projectRepository.findAll();
     }
@@ -75,23 +69,19 @@ public class ProjectService {
 
     @Transactional
     public void syncProjectWithContactRequest(ContactRequest request) {
-        // 1. Rasti esamą projektą
         Project project = projectRepository.findByContactRequest(request)
-            .orElseGet(() -> {
-                // 2. Jei projekto nėra - sukurti naują
-                Project newProject = createProjectFromContactRequest(request);
-                request.setProject(newProject);
-                return projectRepository.save(newProject);
-            });
-        
-        // 3. Atnaujinti projekto duomenis
+                .orElseGet(() -> {
+                    Project newProject = createProjectFromContactRequest(request);
+                    request.setProject(newProject);
+                    return projectRepository.save(newProject);
+                });
+
         project.setStatus(request.getStatus());
         project.setDeliveryDate(request.getDeliveryDate());
         project.setOrderPrice(request.getOrderPrice());
         project.setNotes(request.getNotes());
-        
+
         projectRepository.save(project);
-    
     }
 
     @Transactional
@@ -103,36 +93,51 @@ public class ProjectService {
     @Transactional
     public Project updateProject(Project updatedProject) {
         Project existing = projectRepository.findById(updatedProject.getId())
-            .orElseThrow(() -> new EntityNotFoundException("Project not found"));
-        
-        // Atnaujinti tik keičiamus laukus
+                .orElseThrow(() -> new EntityNotFoundException("Project not found"));
+
         existing.setStatus(updatedProject.getStatus());
         existing.setDeliveryDate(updatedProject.getDeliveryDate());
         existing.setOrderPrice(updatedProject.getOrderPrice());
         existing.setNotes(updatedProject.getNotes());
-        
+
         return projectRepository.save(existing);
     }
 
     @Transactional
     public Project convertContactToProject(Long contactId) {
         ContactRequest request = contactRequestRepository.findById(contactId)
-            .orElseThrow(() -> new IllegalArgumentException("ContactRequest not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Contact request not found"));
 
-        // Tikriname ar jau yra projektas
         if (request.getProject() != null) {
-            return request.getProject(); // Grąžiname jau esantį projektą
+            return request.getProject();
         }
 
         request.setConvertedToProject(true);
-        Project project = createProjectFromContactRequest(request);
+
+        Project project = new Project();
+        User user = findOrCreateUserFromRequest(request);
+
+        project.setUser(user);
+        project.setContactRequest(request);
+        project.setName(generateProjectName(request));
+        project.setDescription(request.getMessage());
+        project.setStatus(request.getStatus() != null ? request.getStatus() : "Vertinamas");
+        project.setDeliveryDate(request.getDeliveryDate());
+        project.setOrderPrice(request.getOrderPrice());
+        project.setNotes(request.getNotes());
+
+        // Nustatome sukūrimo datą
+        if (request.getCreatedAt() != null) {
+          project.setCreatedAt(request.getCreatedAt());
+        } else {
+            project.setCreatedAt(LocalDateTime.now());
+        }
+
         request.setProject(project);
-        
         contactRequestRepository.save(request);
         return projectRepository.save(project);
     }
 
-    // Ištrinti projektą
     @Transactional
     public boolean deleteProject(Long id) {
         if (projectRepository.existsById(id)) {
@@ -142,87 +147,42 @@ public class ProjectService {
         return false;
     }
 
-    // Pagalbiniai metodai
-
     private Project createProjectFromContactRequest(ContactRequest request) {
         Project project = new Project();
         User user = findOrCreateUserFromRequest(request);
-        
+
         project.setUser(user);
-        project.setContactRequest(request); // Naudojant naują ryšį
+        project.setContactRequest(request);
         project.setName(generateProjectName(request));
         project.setDescription(request.getMessage());
         project.setStatus(request.getStatus() != null ? request.getStatus() : "Vertinamas");
-        
-        // Perkeliame svarbius laukus
         project.setDeliveryDate(request.getDeliveryDate());
         project.setOrderPrice(request.getOrderPrice());
         project.setNotes(request.getNotes());
-        
+
+        if (request.getCreatedAt() != null) {
+            project.setCreatedAt(request.getCreatedAt());
+        } else {
+            project.setCreatedAt(LocalDateTime.now());
+        }
+
         return project;
     }
 
     private User findOrCreateUserFromRequest(ContactRequest request) {
         return userRepository.findByEmail(request.getEmail())
-            .orElseGet(() -> {
-                User newUser = new User();
-                newUser.setName(request.getName());
-                newUser.setEmail(request.getEmail());
-                newUser.setPhone(request.getPhone());
-                return userRepository.save(newUser);
-            });
-    }
-
-    private List<Step> createDefaultSteps(Project project) {
-        List<Step> steps = new ArrayList<>();
-        steps.add(createStep("Užklausa gauta", true, project));
-        steps.add(createStep("Vertinimas", false, project));
-        steps.add(createStep("Projektavimas", false, project));
-        steps.add(createStep("Gamyba", false, project));
-        steps.add(createStep("Pristatymas", false, project));
-        return steps;
-    }
-
-    private Step createStep(String title, boolean done, Project project) {
-        Step step = new Step();
-        step.setTitle(title);
-        step.setDone(done);
-        step.setProject(project);
-        return step;
-    }
-
-    private void updateProjectFromRequest(ContactRequest request, Project project) {
-        if (request.getStatus() != null && !request.getStatus().equals(project.getStatus())) {
-            project.setStatus(request.getStatus());
-        }
-        project.setDeliveryDate(request.getDeliveryDate());
-        project.setOrderPrice(request.getOrderPrice());
-        project.setNotes(request.getNotes());
-    }
-
-    private void syncAdditionalFieldsFromRequest(Project project, ContactRequest request) {
-        if (project.getDeliveryDate() == null) {
-            project.setDeliveryDate(request.getDeliveryDate());
-        }
-        if (project.getOrderPrice() == null) {
-            project.setOrderPrice(request.getOrderPrice());
-        }
-        if (project.getNotes() == null || project.getNotes().isEmpty()) {
-            project.setNotes(request.getNotes());
-        }
+                .orElseGet(() -> {
+                    User newUser = new User();
+                    newUser.setName(request.getName());
+                    newUser.setEmail(request.getEmail());
+                    newUser.setPhone(request.getPhone());
+                    return userRepository.save(newUser);
+                });
     }
 
     private String generateProjectName(ContactRequest request) {
-        return "Projektas iš " + request.getName() + " (" + 
-               LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + ")";
-    }
-
-    private LocalDateTime parseCreatedAt(String createdAt) {
-        try {
-            return LocalDateTime.parse(createdAt, DateTimeFormatter.ISO_DATE_TIME);
-        } catch (Exception e) {
-            return LocalDateTime.now();
-        }
+        return "Projektas iš " + request.getName() + " (" +
+                LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + ")";
     }
 
     private void validateProjectBeforeCreate(Project project) {
@@ -232,31 +192,21 @@ public class ProjectService {
         validateUserAssociation(project);
     }
 
-    private void validateProjectBeforeUpdate(Project project) {
-        if (project.getId() == null || !projectRepository.existsById(project.getId())) {
-            throw new EntityNotFoundException("Projektas nerastas");
-        }
-        validateUserAssociation(project);
-    }
-
     private void validateUserAssociation(Project project) {
         if (project.getUser() == null || project.getUser().getId() == null ||
-            !userRepository.existsById(project.getUser().getId())) {
+                !userRepository.existsById(project.getUser().getId())) {
             throw new IllegalArgumentException("Project must be linked to an existing user");
         }
     }
 
     public List<Project> getProjectsByUserEmail(String userEmail) {
-        // Variantas 1: Naudojant Query repository
         return projectRepository.findByUserEmail(userEmail);
     }
 
     public Optional<Project> getProjectById(Long id) {
         return projectRepository.findById(id)
                 .map(project -> {
-                    // Jei reikia papildomai užkrauti susijusius duomenis
                     if (project.getUser() != null) {
-                        // Užkraunam user objektą, jei reikia
                         Hibernate.initialize(project.getUser());
                     }
                     return project;

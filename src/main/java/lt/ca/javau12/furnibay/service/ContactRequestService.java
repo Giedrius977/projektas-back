@@ -44,16 +44,19 @@ public class ContactRequestService {
         return contactRequestRepository.findAll();
     }
 
+    
     // Gauti pagal ID
     public ContactRequest getById(Long id) {
         return contactRequestRepository.findById(id).orElse(null);
     }
 
+    
     // Išsaugoti atnaujintą ContactRequest
     public ContactRequest save(ContactRequest request) {
         return contactRequestRepository.save(request);
     }
 
+    
     // Ištrinti pagal ID
     public boolean deleteById(Long id) {
         if (contactRequestRepository.existsById(id)) {
@@ -63,6 +66,7 @@ public class ContactRequestService {
         return false;
     }
 
+    
     // Atnaujinti statusą + sinchronizuoti su projektu
     @Transactional
     public ContactRequest updateStatus(Long contactRequestId, String newStatus) {
@@ -77,6 +81,7 @@ public class ContactRequestService {
         return request;
     }
 
+    
     // Gauti projektą iš ContactRequest
     public Project getProjectFromContactRequest(Long contactRequestId) {
         ContactRequest request = contactRequestRepository.findById(contactRequestId)
@@ -89,6 +94,7 @@ public class ContactRequestService {
         return request.getProject();
     }
 
+    
     // Konvertuoti ContactRequest į Project
     @Transactional
     public Project convertContactToProject(Long contactId) {
@@ -109,6 +115,7 @@ public class ContactRequestService {
         return createNewProjectFromRequest(request, user);
     }
 
+    
     // Pagal ContactRequest sukurti naują Project
     private Project createNewProjectFromRequest(ContactRequest request, User user) {
         Project project = new Project();

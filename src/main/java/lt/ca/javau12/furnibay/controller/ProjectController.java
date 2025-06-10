@@ -72,9 +72,10 @@ public class ProjectController {
     // Ištrina projektą
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        boolean deleted = projectService.deleteProject(id);
+        boolean deleted = projectService.deleteProjectById(id); // ← Pataisytas metodas
         return deleted ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
     }
+
 
     // Atnaujina projektą
     @PutMapping("/{id}")

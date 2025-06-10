@@ -21,6 +21,8 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     
     List<Project> findByUser(User user);
     
+    boolean existsByUser(User user);
+    
     @Query("SELECT p FROM Project p JOIN p.user u WHERE u.email = :email")
     List<Project> findByUserEmail(@Param("email") String email);
 }

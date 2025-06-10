@@ -21,7 +21,10 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 
-@CrossOrigin(origins = "http://localhost:3001")
+@CrossOrigin(
+	    origins = "http://localhost:3001",
+	    methods = { RequestMethod.GET, RequestMethod.POST, RequestMethod.PATCH, RequestMethod.DELETE }
+	)
 @RestController
 @RequestMapping("/api/contact-requests")
 public class ContactRequestController {
@@ -145,6 +148,13 @@ public class ContactRequestController {
             return ResponseEntity.notFound().build();
         }
     }
+    
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteContactRequest(@PathVariable Long id) {
+        contactRequestService.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+
 
     private LocalDate convertToLocalDate(Object dateObj) throws DateTimeParseException {
         if (dateObj instanceof String) {

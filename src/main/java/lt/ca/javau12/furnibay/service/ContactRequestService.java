@@ -57,14 +57,26 @@ public class ContactRequestService {
     }
 
     
-    // Ištrinti pagal ID
     public boolean deleteById(Long id) {
-        if (contactRequestRepository.existsById(id)) {
+        ContactRequest request = contactRequestRepository.findById(id).orElse(null);
+        if (request != null) {
+            User user = request.getUser();
+
             contactRequestRepository.deleteById(id);
+
+            // Patikrink ar User dar turi kitų ContactRequest ar Project
+            boolean hasOtherRequests = contactRequestRepository.existsByUser(user);
+            boolean hasProjects = projectRepository.existsByUser(user);
+
+            if (!hasOtherRequests && !hasProjects) {
+                userRepository.delete(user);
+            }
+
             return true;
         }
         return false;
     }
+
 
     
     // Atnaujinti statusą + sinchronizuoti su projektu
@@ -144,4 +156,5 @@ public class ContactRequestService {
 
         return project;
     }
+
 }

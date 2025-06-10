@@ -14,10 +14,17 @@ public class ContactRequest {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User user;
 
     private String name;
+    
     private String phone;
+    
     private String email;
+    
     private String message;
     
     @Column(name = "converted_to_project")
@@ -84,4 +91,9 @@ public class ContactRequest {
 
     public Project getProject() { return project; }
     public void setProject(Project project) { this.project = project; }
+    
+	public User getUser() {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

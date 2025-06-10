@@ -1,6 +1,7 @@
 package lt.ca.javau12.furnibay.repository;
 
 import lt.ca.javau12.furnibay.ContactRequest;
+import lt.ca.javau12.furnibay.User;
 
 import java.util.List;
 import java.util.Optional;
@@ -15,5 +16,6 @@ public interface ContactRequestRepository extends JpaRepository<ContactRequest, 
 	
     Optional<ContactRequest> findById(Long id);
     
+    boolean existsByUser(User user);
 
 }

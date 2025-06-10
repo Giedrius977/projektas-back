@@ -139,13 +139,26 @@ public class ProjectService {
     }
 
     @Transactional
-    public boolean deleteProject(Long id) {
-        if (projectRepository.existsById(id)) {
-            projectRepository.deleteById(id);
+    public boolean deleteProjectById(Long id) {
+        Project project = projectRepository.findById(id).orElse(null);
+        if (project != null) {
+            User user = project.getUser();
+
+            projectRepository.delete(project);
+
+            // Patikrink ar User dar turi kitų projektų ar kontaktų
+            boolean hasOtherProjects = projectRepository.existsByUser(user);
+            boolean hasRequests = contactRequestRepository.existsByUser(user);
+
+            if (!hasOtherProjects && !hasRequests) {
+                userRepository.delete(user);
+            }
+
             return true;
         }
         return false;
     }
+
 
     private Project createProjectFromContactRequest(ContactRequest request) {
         Project project = new Project();
@@ -212,4 +225,6 @@ public class ProjectService {
                     return project;
                 });
     }
+
+	
 }

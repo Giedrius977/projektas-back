@@ -61,15 +61,14 @@ public class ProjectService {
     public boolean deleteProject(Long projectId) {
         return projectRepository.findById(projectId)
             .map(project -> {
-                User user = project.getUser();
-                projectRepository.delete(project);
-                
-                // Delete user if no related records exist
-                if (user != null && 
-                    !projectRepository.existsByUser(user) && 
-                    !contactRequestRepository.existsByUser(user)) {
-                    userRepository.delete(user);
+                // Atsieti susijusią užklausą
+                if (project.getContactRequest() != null) {
+                    ContactRequest request = project.getContactRequest();
+                    request.setProject(null);
+                    contactRequestRepository.save(request);
                 }
+                
+                projectRepository.delete(project);
                 return true;
             })
             .orElse(false);

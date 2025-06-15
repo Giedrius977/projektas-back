@@ -1,8 +1,6 @@
 package lt.ca.javau12.furnibay.service;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,7 +11,6 @@ import jakarta.transaction.Transactional;
 
 import lt.ca.javau12.furnibay.ContactRequest;
 import lt.ca.javau12.furnibay.Project;
-import lt.ca.javau12.furnibay.Step;
 import lt.ca.javau12.furnibay.User;
 import lt.ca.javau12.furnibay.repository.ContactRequestRepository;
 import lt.ca.javau12.furnibay.repository.ProjectRepository;
@@ -58,25 +55,25 @@ public class ContactRequestService {
     }
 
     
+    @Transactional // Reikalingas kiekvienam public metodui
     public boolean deleteById(Long id) {
-        ContactRequest request = contactRequestRepository.findById(id).orElse(null);
-        if (request != null) {
-            User user = request.getUser();
-
-            contactRequestRepository.deleteById(id);
-
-            // Patikrink ar User dar turi kitų ContactRequest ar Project
-            boolean hasOtherRequests = contactRequestRepository.existsByUser(user);
-            boolean hasProjects = projectRepository.existsByUser(user);
-
-            if (!hasOtherRequests && !hasProjects) {
-                userRepository.delete(user);
-            }
-
-            return true;
-        }
-        return false;
+        return contactRequestRepository.findById(id)
+            .map(request -> {
+                // Pirmiausia atsieti projektą, jei jis yra
+                if (request.getProject() != null) {
+                    Project project = request.getProject();
+                    project.setContactRequest(null);
+                    projectRepository.save(project);
+                }
+                
+                // Tada ištrinti užklausą
+                contactRequestRepository.delete(request);
+                
+                return true;
+            })
+            .orElse(false);
     }
+
 
     // Atnaujinti statusą + sinchronizuoti su projektu
     @Transactional

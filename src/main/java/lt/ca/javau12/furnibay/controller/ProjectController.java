@@ -2,7 +2,6 @@ package lt.ca.javau12.furnibay.controller;
 
 import java.util.List;
 import org.hibernate.Hibernate;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,7 +15,7 @@ public class ProjectController {
 
     private final ProjectService projectService;
 
-    @Autowired
+    
     public ProjectController(ProjectService projectService) {
         this.projectService = projectService;
     }

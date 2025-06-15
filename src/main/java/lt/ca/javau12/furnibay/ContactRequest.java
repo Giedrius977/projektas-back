@@ -15,12 +15,13 @@ public class ContactRequest {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @OneToOne(mappedBy = "contactRequest")
-    @JsonBackReference  
+    @OneToOne(mappedBy = "contactRequest", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private Project project;
     
     @ManyToOne
     @JoinColumn(name = "user_id")
+    @JsonBackReference
     private User user;
 
     private String name;

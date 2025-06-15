@@ -1,5 +1,6 @@
 package lt.ca.javau12.furnibay.service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -35,7 +36,7 @@ public class ContactRequestService {
 
     // Sukuria naują kontaktinę užklausą
     public ContactRequest create(ContactRequest request) {
-        request.setCreatedAt(LocalDateTime.now());
+        request.setCreatedAt(LocalDate.now());
         return contactRequestRepository.save(request);
     }
 
@@ -77,20 +78,21 @@ public class ContactRequestService {
         return false;
     }
 
-
-    
     // Atnaujinti statusą + sinchronizuoti su projektu
     @Transactional
     public ContactRequest updateStatus(Long contactRequestId, String newStatus) {
         ContactRequest request = contactRequestRepository.findById(contactRequestId)
-            .orElseThrow(() -> new IllegalArgumentException("ContactRequest nerastas su ID: " + contactRequestId));
+            .orElseThrow(() -> new IllegalArgumentException("ContactRequest not found with ID: " + contactRequestId));
 
         request.setStatus(newStatus);
-        contactRequestRepository.save(request);
+        ContactRequest savedRequest = contactRequestRepository.save(request);
 
-        projectService.syncProjectStatusWithRequestStatus(request);
+        // Pakeista: naudojame tiesioginį metodą
+        if (savedRequest.getProject() != null) {
+            projectService.syncProjectStatusWithRequestStatus(savedRequest);
+        }
 
-        return request;
+        return savedRequest;
     }
 
     
@@ -106,55 +108,32 @@ public class ContactRequestService {
         return request.getProject();
     }
 
-    
-    // Konvertuoti ContactRequest į Project
     @Transactional
     public Project convertContactToProject(Long contactId) {
         ContactRequest request = contactRequestRepository.findById(contactId)
-            .orElseThrow(() -> new EntityNotFoundException("ContactRequest nerastas"));
+            .orElseThrow(() -> new EntityNotFoundException("ContactRequest not found"));
 
         if (request.getProject() != null) {
-            Project existingProject = request.getProject();
-            existingProject.setStatus(request.getStatus());
-            existingProject.setNotes((existingProject.getNotes() != null ? existingProject.getNotes() + "\n" : "")
-                    + "Papildyta iš admino panelės.");
-            return projectRepository.save(existingProject);
+            return request.getProject();
         }
 
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("Naudotojas nerastas: " + request.getEmail()));
-
-        return createNewProjectFromRequest(request, user);
-    }
-
-    
-    // Pagal ContactRequest sukurti naują Project
-    private Project createNewProjectFromRequest(ContactRequest request, User user) {
         Project project = new Project();
-        project.setUser(user);
-        project.setName("Projektas pagal kontaktinę užklausą");
+        project.setName("Project from " + request.getName());
         project.setDescription(request.getMessage());
-        project.setCreatedAt(LocalDateTime.now());
+        project.setStatus(request.getStatus() != null ? request.getStatus() : "New");
+        project.setDeliveryDate(request.getDeliveryDate());
+        project.setOrderPrice(request.getOrderPrice());
+        project.setNotes(request.getNotes());
+        project.setCreatedAt(LocalDate.now());
         project.setContactRequest(request);
-        project.setStatus(request.getStatus());
-        project.setNotes("Užklausa iš kontaktinės formos.\nFailas: " +
-                (request.getFile() != null ? "Pridėtas" : "Nepateiktas"));
+        project.setUser(request.getUser());
 
-        List<Step> steps = Arrays.asList(
-                new Step("Užklausa gauta", true, project),
-                new Step("Vertinimas", false, project),
-                new Step("Projektavimas", false, project),
-                new Step("Gamyba", false, project),
-                new Step("Pristatymas", false, project)
-        );
-
-        project.setSteps(steps);
-        request.setProject(project);
-
-        projectRepository.save(project);
+        Project savedProject = projectRepository.save(project);
+        
+        request.setProject(savedProject);
+        request.setConvertedToProject(true);
         contactRequestRepository.save(request);
-
-        return project;
+        
+        return savedProject;
     }
-
 }

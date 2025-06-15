@@ -13,8 +13,6 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
-import jakarta.persistence.EntityNotFoundException;
-
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -44,11 +42,11 @@ public class ContactRequestController {
             .registerModule(new JavaTimeModule());
     }
 
-    @PostMapping
-    public ResponseEntity<ContactRequest> create(@RequestBody ContactRequest request) {
-        ContactRequest savedRequest = contactRequestService.create(request);
-        return ResponseEntity.ok(savedRequest);
+    @PostMapping(consumes = "application/json", produces = "application/json")
+    public ResponseEntity<ContactRequest> create(@RequestBody ContactRequest contactRequest) {
+        return ResponseEntity.ok(contactRequestService.create(contactRequest));
     }
+
 
     @GetMapping
     public List<ContactRequest> getAll() {
@@ -141,13 +139,11 @@ public class ContactRequestController {
 
     @GetMapping("/{id}/project")
     public ResponseEntity<Project> getProjectFromContactRequest(@PathVariable Long id) {
-        try {
-            Project project = projectService.getProjectFromContactRequest(id);
-            return ResponseEntity.ok(project);
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return projectService.getProjectFromContactRequest(id)
+                .map(project -> ResponseEntity.ok(project))
+                .orElse(ResponseEntity.notFound().build());
     }
+
     
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteContactRequest(@PathVariable Long id) {

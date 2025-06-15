@@ -5,15 +5,19 @@ import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.*;
 
 @Entity
 public class ContactRequest {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    
+    @OneToOne(mappedBy = "contactRequest")
+    @JsonBackReference  
+    private Project project;
     
     @ManyToOne
     @JoinColumn(name = "user_id")
@@ -37,22 +41,23 @@ public class ContactRequest {
     private LocalDate deliveryDate;
     
     private String orderPrice;
+    
     private String notes;
 
     @Lob
     @Column(columnDefinition = "LONGTEXT")
     private String file;
-
-    private LocalDateTime createdAt;
-
-    @OneToOne(mappedBy = "contactRequest", cascade = CascadeType.ALL)
-    @JsonBackReference
-    private Project project;
     
+    @Column(name = "created_at")
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate createdAt;
 
-
-    // Getteriai ir setteriai
-
+    
+    
+    public ContactRequest() {}
+    
+    
+    
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -86,14 +91,18 @@ public class ContactRequest {
     public String getFile() { return file; }
     public void setFile(String file) { this.file = file; }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDate getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDate createdAt) { this.createdAt = createdAt; }
 
     public Project getProject() { return project; }
-    public void setProject(Project project) { this.project = project; }
+    public void setProject(Project project) {
+        this.project = project;
+        if (project != null && project.getContactRequest() != this) {
+            project.setContactRequest(this);
+        }
+    }
     
-	public User getUser() {
-		// TODO Auto-generated method stub
-		return null;
-	}
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
+
 }

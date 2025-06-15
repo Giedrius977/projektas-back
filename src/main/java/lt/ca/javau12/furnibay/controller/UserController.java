@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import lt.ca.javau12.furnibay.Project;
 import lt.ca.javau12.furnibay.User;
+import lt.ca.javau12.furnibay.service.ProjectService;
 import lt.ca.javau12.furnibay.service.UserService;
 
 @CrossOrigin(origins = "http://localhost:3001")
@@ -61,9 +62,12 @@ public class UserController {
             .orElse(ResponseEntity.notFound().build());
     }
     
+    @Autowired
+    private ProjectService projectService;
+    
     @GetMapping("/{userId}/projects")
     public ResponseEntity<List<Project>> getUserProjects(@PathVariable Long userId) {
-        List<Project> projects = userService.getUserProjects(userId);
+        List<Project> projects = projectService.getProjectsByUserId(userId);
         return ResponseEntity.ok(projects);
     }
 }

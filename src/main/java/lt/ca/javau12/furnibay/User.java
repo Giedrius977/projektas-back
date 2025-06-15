@@ -3,9 +3,11 @@ package lt.ca.javau12.furnibay;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -27,14 +29,15 @@ public class User {
     private String name;
 
     @Email
+    @Column(unique = true)
     private String email;
-
+  
     private String phone;
 
     private String description;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference("user-projects")
+    @JsonIgnore
     private List<Project> projects = new ArrayList<>();
 
 
@@ -90,5 +93,4 @@ public class User {
 	public void setProjects(List<Project> projects) {
 		this.projects = projects;
 	}
-   
 }

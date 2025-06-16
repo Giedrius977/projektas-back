@@ -1,4 +1,4 @@
-package lt.ca.javau12.furnibay;
+package lt.ca.javau12.furnibay.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

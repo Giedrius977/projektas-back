@@ -9,6 +9,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import lt.ca.javau12.furnibay.ContactRequest;
 import lt.ca.javau12.furnibay.Project;
 import lt.ca.javau12.furnibay.User;
@@ -18,9 +21,15 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     List<Project> findByUserId(Long userId);
     
+    static final Logger logger = LoggerFactory.getLogger(ProjectRepository.class);
+    
     Optional<Project> findByContactRequest(ContactRequest contactRequest);
     
-    Optional<Project> findByContactRequestId(Long contactRequestId);
+    @Query("SELECT p FROM Project p WHERE p.contactRequest.id = :contactId")
+    default Optional<Project> findByContactRequestId(Long contactId) {
+        logger.trace("Searching project for contactId: {}", contactId);
+        return this.findByContactRequestId(contactId);
+    }
     
     List<Project> findByUser(User user);
     

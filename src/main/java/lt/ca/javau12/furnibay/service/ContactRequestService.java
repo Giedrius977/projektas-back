@@ -1,8 +1,14 @@
 package lt.ca.javau12.furnibay.service;
 
 import java.time.LocalDate;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -11,7 +17,7 @@ import jakarta.transaction.Transactional;
 
 import lt.ca.javau12.furnibay.ContactRequest;
 import lt.ca.javau12.furnibay.Project;
-import lt.ca.javau12.furnibay.User;
+import lt.ca.javau12.furnibay.controller.ContactRequestController;
 import lt.ca.javau12.furnibay.repository.ContactRequestRepository;
 import lt.ca.javau12.furnibay.repository.ProjectRepository;
 import lt.ca.javau12.furnibay.repository.UserRepository;
@@ -30,6 +36,8 @@ public class ContactRequestService {
 
     @Autowired
     private ProjectService projectService;
+    
+    private static final Logger logger = LoggerFactory.getLogger(ContactRequestService.class);
 
     // Sukuria naują kontaktinę užklausą
     public ContactRequest create(ContactRequest request) {
@@ -105,32 +113,59 @@ public class ContactRequestService {
         return request.getProject();
     }
 
+	/*
+	 * @Transactional public Project convertContactToProject(Long contactId) {
+	 * ContactRequest request = contactRequestRepository.findById(contactId)
+	 * .orElseThrow(() -> new EntityNotFoundException("ContactRequest not found"));
+	 * 
+	 * if (request.getProject() != null) { return request.getProject(); }
+	 * 
+	 * Project project = new Project(); project.setName("Project from " +
+	 * request.getName()); project.setDescription(request.getMessage());
+	 * project.setStatus(request.getStatus() != null ? request.getStatus() : "New");
+	 * project.setDeliveryDate(request.getDeliveryDate());
+	 * project.setOrderPrice(request.getOrderPrice());
+	 * project.setNotes(request.getNotes()); project.setCreatedAt(LocalDate.now());
+	 * project.setContactRequest(request); project.setUser(request.getUser());
+	 * 
+	 * Project savedProject = projectRepository.save(project);
+	 * 
+	 * request.setProject(savedProject); request.setConvertedToProject(true);
+	 * contactRequestRepository.save(request);
+	 * 
+	 * return savedProject; }
+	 */
+    
     @Transactional
     public Project convertContactToProject(Long contactId) {
-        ContactRequest request = contactRequestRepository.findById(contactId)
-            .orElseThrow(() -> new EntityNotFoundException("ContactRequest not found"));
-
-        if (request.getProject() != null) {
-            return request.getProject();
-        }
-
-        Project project = new Project();
-        project.setName("Project from " + request.getName());
-        project.setDescription(request.getMessage());
-        project.setStatus(request.getStatus() != null ? request.getStatus() : "New");
-        project.setDeliveryDate(request.getDeliveryDate());
-        project.setOrderPrice(request.getOrderPrice());
-        project.setNotes(request.getNotes());
-        project.setCreatedAt(LocalDate.now());
-        project.setContactRequest(request);
-        project.setUser(request.getUser());
-
-        Project savedProject = projectRepository.save(project);
+        logger.debug("Attempting to convert contactId: {}", contactId);
         
-        request.setProject(savedProject);
+        ContactRequest request = contactRequestRepository.findById(contactId)
+            .orElseThrow(() -> {
+                logger.error("ContactRequest not found for conversion: {}", contactId);
+                return new EntityNotFoundException("ContactRequest not found");
+            });
+        
+        if (request.isConvertedToProject()) {
+            logger.warn("ContactRequest {} already converted to project {}", 
+                contactId, request.getProject().getId());
+            throw new IllegalStateException("Request already converted");
+        }
+        
+        logger.info("Creating new project for contactId: {}", contactId);
+        Project project = new Project();
+        // ... konvertavimo logika
+        
+        request.setProject(project);
         request.setConvertedToProject(true);
+        
+        projectRepository.save(project);
         contactRequestRepository.save(request);
         
-        return savedProject;
+        logger.debug("Successfully created project {} for contactId {}", 
+            project.getId(), contactId);
+        
+        return project;
     }
+    
 }

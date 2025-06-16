@@ -34,9 +34,9 @@ public class Project {
     private Long id;  // Maps to auto-increment primary key
     
     //@OneToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    //@JsonManagedReference
     @OneToOne
     @JoinColumn(name = "contact_request_id")
+    @JsonManagedReference
     private ContactRequest contactRequest;
     
     @ManyToOne

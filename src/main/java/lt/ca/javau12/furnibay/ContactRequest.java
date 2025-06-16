@@ -1,13 +1,19 @@
 package lt.ca.javau12.furnibay;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Entity
 public class ContactRequest {
@@ -26,10 +32,12 @@ public class ContactRequest {
 
     private String name;
     
+    @Pattern(regexp = "^\\+?[0-9\\s-]{8,20}$", message = "Invalid phone number format")
     private String phone;
     
     private String email;
     
+    @Size(max = 500, message = "Message cannot exceed 500 characters")
     private String message;
     
     @Column(name = "converted_to_project")
@@ -52,6 +60,14 @@ public class ContactRequest {
     @Column(name = "created_at")
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate createdAt;
+    
+    private static final Logger logger = LoggerFactory.getLogger(ContactRequest.class);
+    
+    @PostUpdate
+    private void afterUpdate() {
+        logger.debug("ContactRequest {} updated. Converted status: {}", 
+            id, convertedToProject);
+    }
 
     
     

@@ -13,6 +13,8 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -35,7 +37,7 @@ public class Project {
     
     //@OneToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @OneToOne
-    @JoinColumn(name = "contact_request_id")
+    @JoinColumn(name = "contact_request_id", unique = true)
     @JsonManagedReference
     private ContactRequest contactRequest;
     
@@ -45,19 +47,31 @@ public class Project {
     
     // Other fields matching your table columns
     private String name;
+    
+    @Column(nullable = false, length = 500)
     private String description;
+    
     private String status;
     private LocalDate createdAt;
     private LocalDate deliveryDate;
     private String orderPrice;
     private String notes;
     
-    
+    @Enumerated(EnumType.STRING)
+    private ProjectType projectType;
     
 
     
     
    
+
+	public ProjectType getProjectType() {
+		return projectType;
+	}
+
+	public void setProjectType(ProjectType projectType) {
+		this.projectType = projectType;
+	}
 
 	public LocalDate getDeliveryDate() {
         return deliveryDate;

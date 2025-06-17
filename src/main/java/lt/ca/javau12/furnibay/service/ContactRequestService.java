@@ -1,23 +1,20 @@
 package lt.ca.javau12.furnibay.service;
 
 import java.time.LocalDate;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.List;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Service;
-
+import org.springframework.transaction.annotation.Transactional;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
 
 import lt.ca.javau12.furnibay.ContactRequest;
 import lt.ca.javau12.furnibay.Project;
-import lt.ca.javau12.furnibay.controller.ContactRequestController;
+import lt.ca.javau12.furnibay.exception.ResourceNotFoundException;
 import lt.ca.javau12.furnibay.repository.ContactRequestRepository;
 import lt.ca.javau12.furnibay.repository.ProjectRepository;
 import lt.ca.javau12.furnibay.repository.UserRepository;
@@ -32,6 +29,13 @@ public class ContactRequestService {
     private ProjectRepository projectRepository;
 
     @Autowired
+    public ContactRequestService(ContactRequestRepository contactRequestRepository,
+                               ProjectRepository projectRepository) {
+        this.contactRequestRepository = contactRequestRepository;
+        this.projectRepository = projectRepository;
+    }
+    
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -39,6 +43,21 @@ public class ContactRequestService {
     
     private static final Logger logger = LoggerFactory.getLogger(ContactRequestService.class);
 
+    
+    public ContactRequestService(ContactRequestRepository contactRequestRepository) {
+        this.contactRequestRepository = contactRequestRepository;
+    }
+    
+    @Transactional(readOnly = true)
+    public ContactRequest findById(Long id) {
+        Optional<ContactRequest> contactRequest = contactRequestRepository.findById(id);
+        if (contactRequest.isEmpty()) {
+            throw new ResourceNotFoundException("Contact request not found with id: " + id);
+        }
+        return contactRequest.get();
+    }
+    
+    
     // Sukuria naują kontaktinę užklausą
     public ContactRequest create(ContactRequest request) {
         request.setCreatedAt(LocalDate.now());
@@ -63,23 +82,15 @@ public class ContactRequestService {
     }
 
     
-    @Transactional // Reikalingas kiekvienam public metodui
+    @Transactional
     public boolean deleteById(Long id) {
-        return contactRequestRepository.findById(id)
-            .map(request -> {
-                // Pirmiausia atsieti projektą, jei jis yra
-                if (request.getProject() != null) {
-                    Project project = request.getProject();
-                    project.setContactRequest(null);
-                    projectRepository.save(project);
-                }
-                
-                // Tada ištrinti užklausą
-                contactRequestRepository.delete(request);
-                
-                return true;
-            })
-            .orElse(false);
+        try {
+            contactRequestRepository.deleteById(id);
+            contactRequestRepository.flush();
+            return true;
+        } catch (EmptyResultDataAccessException e) {
+            return false;
+        }
     }
 
 
@@ -113,59 +124,60 @@ public class ContactRequestService {
         return request.getProject();
     }
 
-	/*
-	 * @Transactional public Project convertContactToProject(Long contactId) {
-	 * ContactRequest request = contactRequestRepository.findById(contactId)
-	 * .orElseThrow(() -> new EntityNotFoundException("ContactRequest not found"));
-	 * 
-	 * if (request.getProject() != null) { return request.getProject(); }
-	 * 
-	 * Project project = new Project(); project.setName("Project from " +
-	 * request.getName()); project.setDescription(request.getMessage());
-	 * project.setStatus(request.getStatus() != null ? request.getStatus() : "New");
-	 * project.setDeliveryDate(request.getDeliveryDate());
-	 * project.setOrderPrice(request.getOrderPrice());
-	 * project.setNotes(request.getNotes()); project.setCreatedAt(LocalDate.now());
-	 * project.setContactRequest(request); project.setUser(request.getUser());
-	 * 
-	 * Project savedProject = projectRepository.save(project);
-	 * 
-	 * request.setProject(savedProject); request.setConvertedToProject(true);
-	 * contactRequestRepository.save(request);
-	 * 
-	 * return savedProject; }
-	 */
-    
     @Transactional
     public Project convertContactToProject(Long contactId) {
         logger.debug("Attempting to convert contactId: {}", contactId);
-        
-        ContactRequest request = contactRequestRepository.findById(contactId)
-            .orElseThrow(() -> {
-                logger.error("ContactRequest not found for conversion: {}", contactId);
-                return new EntityNotFoundException("ContactRequest not found");
+
+        // Tikriname ar jau yra sukurtas projektas pagal contactId
+        return projectRepository.findByContactRequestId(contactId)
+            .orElseGet(() -> {
+                // Užklausos gavimas
+                ContactRequest request = contactRequestRepository.findById(contactId)
+                    .orElseThrow(() -> {
+                        logger.error("ContactRequest not found for conversion: {}", contactId);
+                        return new EntityNotFoundException("ContactRequest not found");
+                    });
+
+                if (request.isConvertedToProject() || request.getProject() != null) {
+                    logger.warn("ContactRequest {} already converted to project {}", 
+                        contactId, request.getProject() != null ? request.getProject().getId() : "N/A");
+                    throw new IllegalStateException("Request already converted");
+                }
+
+                logger.info("Creating new project for contactId: {}", contactId);
+
+                // Naujo projekto kūrimas
+                Project project = new Project();
+                project.setName("Project from " + request.getName());
+
+                // Užtikriname, kad description niekada nebus null
+                String description = request.getMessage() != null ?
+                    (request.getMessage().length() > 200 ?
+                        request.getMessage().substring(0, 200) :
+                        request.getMessage()) :
+                    "Projektas iš užklausos #" + contactId;
+
+                project.setDescription(description);
+                project.setStatus("Projektuojama");
+                project.setDeliveryDate(request.getDeliveryDate());
+                project.setOrderPrice(request.getOrderPrice());
+                project.setNotes(request.getNotes());
+                project.setContactRequest(request);
+
+                // Išsaugome projektą
+                Project savedProject = projectRepository.save(project);
+
+                // Atnaujiname užklausą
+                request.setProject(savedProject);
+                request.setConvertedToProject(true);
+                contactRequestRepository.save(request);
+
+                logger.info("Successfully created project {} for contactId {}", 
+                    savedProject.getId(), contactId);
+
+                return savedProject;
             });
-        
-        if (request.isConvertedToProject()) {
-            logger.warn("ContactRequest {} already converted to project {}", 
-                contactId, request.getProject().getId());
-            throw new IllegalStateException("Request already converted");
-        }
-        
-        logger.info("Creating new project for contactId: {}", contactId);
-        Project project = new Project();
-        // ... konvertavimo logika
-        
-        request.setProject(project);
-        request.setConvertedToProject(true);
-        
-        projectRepository.save(project);
-        contactRequestRepository.save(request);
-        
-        logger.debug("Successfully created project {} for contactId {}", 
-            project.getId(), contactId);
-        
-        return project;
     }
+
     
 }

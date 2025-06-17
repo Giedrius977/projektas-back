@@ -57,6 +57,9 @@ public class ProjectService {
         return projectRepository.save(project);
     }
 
+    
+
+    
     @Transactional
     public boolean deleteProject(Long projectId) {
         return projectRepository.findById(projectId)
@@ -213,4 +216,10 @@ public class ProjectService {
             throw new IllegalArgumentException("Project must be linked to an existing user");
         }
     }
+    
+    public void deleteProjectById(Long projectId) {
+        projectRepository.deleteById(projectId);
+        
+    }
+	
 }

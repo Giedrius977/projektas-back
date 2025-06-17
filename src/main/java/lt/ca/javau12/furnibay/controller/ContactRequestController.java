@@ -29,33 +29,34 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
 @CrossOrigin(
-    origins = "http://localhost:3001",
-    methods = { RequestMethod.GET, RequestMethod.POST, RequestMethod.PATCH, RequestMethod.DELETE }
-)
-@RestController
-@RequestMapping("/api/contact-requests")
-public class ContactRequestController {
+	    origins = "http://localhost:3001",
+	    methods = { RequestMethod.GET, RequestMethod.POST, RequestMethod.PATCH, RequestMethod.DELETE }
+	)
+	@RestController
+	@RequestMapping("/api/contact-requests")
+	public class ContactRequestController {
 
-    private final ContactRequestService contactRequestService;
-    private final ContactRequestRepository contactRequestRepository;
-    private final ProjectService projectService;
-    private final ObjectMapper objectMapper;
-    private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final Logger logger = LoggerFactory.getLogger(ContactRequestController.class);
+	    private final ContactRequestService contactRequestService;
+	    private final ProjectService projectService;
+	    private final ObjectMapper objectMapper;
+	    private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+	    private static final Logger logger = LoggerFactory.getLogger(ContactRequestController.class);
 
-
+ // Vienintelis konstruktorius
     @Autowired
     public ContactRequestController(ContactRequestService contactRequestService,
-                                    ContactRequestRepository contactRequestRepository,
-                                    ProjectService projectService) {
+                                  ProjectService projectService) {
         this.contactRequestService = contactRequestService;
-        this.contactRequestRepository = contactRequestRepository;
         this.projectService = projectService;
         this.objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .registerModule(new JavaTimeModule());
     }
+    @Autowired
+    private ContactRequestRepository contactRequestRepository;
+    
 
     @PostMapping(consumes = "application/json", produces = "application/json")
     public ResponseEntity<ContactRequest> create(@RequestBody ContactRequest contactRequest) {
@@ -63,50 +64,23 @@ public class ContactRequestController {
         return ResponseEntity.ok(created);
     }
 
-	/*
-	 * @PostMapping("/convert/{contactId}") public ResponseEntity<?>
-	 * convertContactToProject(@PathVariable Long contactId) { try { ContactRequest
-	 * request = contactRequestService.getById(contactId); if (request == null) {
-	 * return ResponseEntity.notFound().build(); }
-	 * 
-	 * Project project = projectService.convertContactToProject(contactId); if
-	 * (project == null) { return
-	 * ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-	 * .body("Conversion failed: returned project is null"); }
-	 * 
-	 * request.setConvertedToProject(true); ContactRequest updatedRequest =
-	 * contactRequestService.save(request);
-	 * 
-	 * if (!updatedRequest.isConvertedToProject()) { return
-	 * ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-	 * .body("Conversion failed: could not mark as converted"); }
-	 * 
-	 * return ResponseEntity.ok(Map.of( "project", project, "contactRequest",
-	 * updatedRequest )); } catch (Exception e) {
-	 * System.err.println("Conversion error: " + e.getMessage()); return
-	 * ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-	 * .body("Conversion failed: " + e.getMessage()); } }
-	 */
-
-    @PostMapping("/convert/{contactId}")
-    public ResponseEntity<?> convertToProject(@PathVariable Long contactId) {
-        logger.info("Starting conversion for contactId: {}", contactId);
+    @PostMapping("/{id}/convert")
+    public ResponseEntity<Project> convertToProject(@PathVariable Long id) {
         try {
-            Project project = contactRequestService.convertContactToProject(contactId);
-            logger.debug("Successfully converted contactId {} to projectId {}", contactId, project.getId());
+            Project project = contactRequestService.convertContactToProject(id);
             return ResponseEntity.ok(project);
         } catch (EntityNotFoundException e) {
-            logger.warn("ContactRequest not found for id: {}", contactId);
+            logger.error("ContactRequest not found for conversion: {}", id);
             return ResponseEntity.notFound().build();
         } catch (IllegalStateException e) {
-            logger.warn("Conversion rejected for contactId {}: {}", contactId, e.getMessage());
-            return ResponseEntity.badRequest().body(e.getMessage());
+            logger.warn("Conversion failed for request {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest().body(null);
         } catch (Exception e) {
-            logger.error("Unexpected error converting contactId {}: {}", contactId, e.getMessage(), e);
-            return ResponseEntity.internalServerError()
-                    .body("Conversion failed: " + e.getMessage());
+            logger.error("Unexpected error during conversion: {}", e.getMessage());
+            return ResponseEntity.internalServerError().build();
         }
     }
+    
     
     @GetMapping
     public ResponseEntity<List<ContactRequest>> getAll() {
@@ -119,6 +93,15 @@ public class ContactRequestController {
         return projectOpt.map(ResponseEntity::ok)
                          .orElse(ResponseEntity.notFound().build());
     }
+    
+   
+    
+    @GetMapping("/{id}")
+    public ResponseEntity<ContactRequest> getContactRequestById(@PathVariable Long id) {
+        ContactRequest contactRequest = contactRequestService.findById(id);
+        return ResponseEntity.ok(contactRequest);
+    }
+    
 
     @PatchMapping("/{id}")
     public ResponseEntity<?> updateRequest(@PathVariable Long id,
@@ -168,19 +151,30 @@ public class ContactRequestController {
 
     @DeleteMapping("/{id}")
     @Transactional
-    public ResponseEntity<Void> deleteContactRequest(@PathVariable Long id) {
-        try {
-            boolean deleted = contactRequestService.deleteById(id);
-            if (deleted) {
-                contactRequestRepository.flush();
-                return ResponseEntity.noContent().build();
-            }
+    public ResponseEntity<?> deleteContactRequest(@PathVariable Long id,
+                                                  @RequestParam(defaultValue = "false") boolean forceDelete) {
+        Optional<ContactRequest> optionalRequest = contactRequestRepository.findById(id);
+
+        if (optionalRequest.isEmpty()) {
             return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            System.err.println("Delete error for request ID " + id + ": " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
+
+        ContactRequest request = optionalRequest.get();
+
+        if ((request.isConvertedToProject() || request.getProject() != null) && !forceDelete) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body("Negalima ištrinti užklausos, kuri jau paversta projektu (nebent forceDelete=true).");
+        }
+
+        // Jei yra susietas projektas, pašalinam jį
+        if (request.getProject() != null) {
+            projectService.deleteProjectById(request.getProject().getId());
+        }
+
+        contactRequestRepository.deleteById(id);
+        return ResponseEntity.ok("Ištrinta užklausa (ir projektas, jei buvo).");
     }
+
 
     private LocalDate convertToLocalDate(Object dateObj) throws DateTimeParseException {
         if (dateObj instanceof String) {

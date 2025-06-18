@@ -1,32 +1,14 @@
 package lt.ca.javau12.furnibay;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
-
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.MapsId;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 
 @Entity
 @Table(name = "projects")
@@ -36,9 +18,9 @@ public class Project {
     private Long id;  // Maps to auto-increment primary key
     
     //@OneToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    //@JsonManagedReference
     @OneToOne
-    @JoinColumn(name = "contact_request_id", unique = true)
-    @JsonManagedReference
+    @JoinColumn(name = "contact_request_id")
     private ContactRequest contactRequest;
     
     @ManyToOne
@@ -47,31 +29,19 @@ public class Project {
     
     // Other fields matching your table columns
     private String name;
-    
-    @Column(nullable = false, length = 500)
     private String description;
-    
     private String status;
     private LocalDate createdAt;
     private LocalDate deliveryDate;
     private String orderPrice;
     private String notes;
     
-    @Enumerated(EnumType.STRING)
-    private ProjectType projectType;
+    
     
 
     
     
    
-
-	public ProjectType getProjectType() {
-		return projectType;
-	}
-
-	public void setProjectType(ProjectType projectType) {
-		this.projectType = projectType;
-	}
 
 	public LocalDate getDeliveryDate() {
         return deliveryDate;
